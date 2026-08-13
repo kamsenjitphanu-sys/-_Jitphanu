@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คลังอุปกรณ์สำนักงาน</title>
+<style>
+  body { font-family: Arial, 'Noto Sans Thai', sans-serif; margin: 0; background: #f5f7fb; color: #222; }
+  header { background: #2563eb; color: white; padding: 20px 28px; }
+  nav { display: flex; gap: 8px; padding: 12px; background: white; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+  button { border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; background: #e5e7eb; transition: 0.2s; }
+  button:hover { opacity: 0.8; }
+  button.active, button.primary { background: #2563eb; color: white; }
+  button.btn-sm { padding: 5px 10px; font-size: 12px; margin-right: 4px; border-radius: 4px; }
+  button.btn-edit { background: #f59e0b; color: white; }
+  button.btn-delete { background: #ef4444; color: white; }
+  button.btn-return { background: #10b981; color: white; }
+  main { padding: 28px; max-width: 1100px; margin: auto; }
+  .card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .stat { font-size: 30px; font-weight: bold; color: #2563eb; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+  input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
+  label { display: block; margin: 10px 0 5px; font-weight: bold; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>คลังอุปกรณ์สำนักงาน</h1>
+  <div>ระบบจัดการอุปกรณ์และการเบิก-คืน</div>
+</header>
+
+<nav id="nav">
+  <button class="active" onclick="show('dashboard', this)">Dashboard</button>
+  <button onclick="show('equipment', this)">อุปกรณ์</button>
+  <button onclick="show('people', this)">บุคลากร</button>
+  <button onclick="show('borrow', this)">เบิก-คืน</button>
+  <button onclick="show('history', this)">ประวัติ</button>
+</nav>
+
+<main>
+  <!-- Dashboard -->
+  <section id="dashboard">
+    <div class="grid">
+      <div class="card"><div>อุปกรณ์ทั้งหมด</div><div class="stat" id="total">0</div></div>
+      <div class="card"><div>พร้อมใช้งาน</div><div class="stat" id="available">0</div></div>
+      <div class="card"><div>กำลังถูกยืม</div><div class="stat" id="borrowed">0</div></div>
+    </div>
+    <div class="card"><h2>ภาพรวม</h2><p>เลือกเมนูด้านบนเพื่อจัดการข้อมูลคลังอุปกรณ์</p></div>
+  </section>
+
+  <!-- Equipment -->
+  <section id="equipment" class="hidden">
+    <div class="card">
+      <h2>เพิ่มอุปกรณ์</h2>
+      <label>ชื่ออุปกรณ์</label>
+      <input id="eqName" list="eqDropdown" placeholder="คลิกเพื่อเลือกอุปกรณ์ หรือพิมพ์ชื่อใหม่เอง...">
+      <datalist id="eqDropdown">
+        <option value="กล้อง DSLR">
+        <option value="ขาตั้งกล้อง">
+        <option value="แบตเตอรี่สำรอง">
+        <option value="แท่นชาร์จ">
+        <option value="เมมโมรีการ์ด">
+        <option value="ไมค์ไร้สายติดปกเสื้อ">
+        <option value="ไมค์ลอย">
+        <option value="เครื่องบันทึกเสียง">
+        <option value="มิกเซอร์">
+        <option value="สาย AUX">
+        <option value="ขาตั้งไฟ">
+        <option value="ไฟต่อเนื่อง">
+        <option value="พอยน์เตอร์">
+        <option value="HDMI">
+        <option value="ปลั๊กพ่วง">
+      </datalist>
+      
+      <label>จำนวนทั้งหมด</label>
+      <input id="eqQty" type="number" min="1" value="1">
+      <br><br>
+      <button class="primary" onclick="addEquipment()">เพิ่มอุปกรณ์</button>
+    </div>
+    <div class="card"><h2>รายการอุปกรณ์</h2><div id="equipmentList"></div></div>
+  </section>
+
+  <!-- People -->
+  <section id="people" class="hidden">
+    <div class="card">
+      <h2>บุคลากร</h2>
+      <label>ชื่อ-นามสกุล</label>
+      <input id="personName" placeholder="เช่น สมชาย ใจดี">
+      <br><br>
+      <button class="primary" onclick="addPerson()">เพิ่มบุคลากร</button>
+    </div>
+    <div class="card"><div id="peopleList"></div></div>
+  </section>
+
+  <!-- Borrow / Return -->
+  <section id="borrow" class="hidden">
+    <div class="card">
+      <h2>เบิกอุปกรณ์</h2>
+      <label>เลือกอุปกรณ์</label><select id="borrowEq"></select>
+      <label>เลือกผู้เบิก</label><select id="borrowPerson"></select>
+      <label>วันที่กำหนดคืน (ไม่บังคับ)</label><input type="date" id="borrowReturnDate">
+      <br><br>
+      <button class="primary" onclick="borrow()">บันทึกการเบิก</button>
+    </div>
+    <div class="card"><h2>รายการที่กำลังถูกยืม (รอรับคืน)</h2><div id="borrowedList"></div></div>
+  </section>
+
+  <!-- History -->
+  <section id="history" class="hidden">
+    <div class="card"><h2>ประวัติการทำรายการ</h2><div id="historyList"></div></div>
+  </section>
+</main>
+
+<script>
+const KEY = 'office_inventory_v4';
+
+const defaultEquipment = [
+  { id: 101, name: "กล้อง DSLR", qty: 2, available: 2 },
+  { id: 102, name: "ขาตั้งกล้อง", qty: 2, available: 2 },
+  { id: 103, name: "แบตเตอรี่สำรอง", qty: 4, available: 4 },
+  { id: 104, name: "แท่นชาร์จ", qty: 2, available: 2 },
+  { id: 105, name: "เมมโมรีการ์ด", qty: 4, available: 4 },
+  { id: 106, name: "ไมค์ไร้สายติดปกเสื้อ", qty: 2, available: 2 },
+  { id: 107, name: "ไมค์ลอย", qty: 2, available: 2 },
+  { id: 108, name: "เครื่องบันทึกเสียง", qty: 1, available: 1 },
+  { id: 109, name: "มิกเซอร์", qty: 1, available: 1 },
+  { id: 110, name: "สาย AUX", qty: 5, available: 5 },
+  { id: 111, name: "ขาตั้งไฟ", qty: 2, available: 2 },
+  { id: 112, name: "ไฟต่อเนื่อง", qty: 2, available: 2 },
+  { id: 113, name: "พอยน์เตอร์", qty: 2, available: 2 },
+  { id: 114, name: "HDMI", qty: 5, available: 5 },
+  { id: 115, name: "ปลั๊กพ่วง", qty: 4, available: 4 }
+];
+
+let data = JSON.parse(localStorage.getItem(KEY) || JSON.stringify({
+  equipment: defaultEquipment, 
+  people: [], 
+  history: [], 
+  activeBorrows: []
+}));
+
+function save() { 
+  localStorage.setItem(KEY, JSON.stringify(data)); 
+  render(); 
+}
+
+function show(id, btn) {
+  document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function addEquipment() {
+  const name = document.getElementById('eqName').value.trim();
+  const qty = Math.max(1, Number(document.getElementById('eqQty').value) || 1);
+  if (!name) return alert('กรุณากรอกชื่ออุปกรณ์');
+  data.equipment.push({ id: Date.now(), name, qty, available: qty });
+  document.getElementById('eqName').value = '';
+  document.getElementById('eqQty').value = '1';
+  save();
+}
+
+function editEquipment(id) {
+  const item = data.equipment.find(x => x.id === id);
+  if (!item) return;
+  const newName = prompt("แก้ไขชื่ออุปกรณ์:", item.name);
+  if (newName === null) return;
+  const newQty = prompt("แก้ไขจำนวนทั้งหมด:", item.qty);
+  if (newQty === null) return;
+  
+  const qtyNum = parseInt(newQty);
+  if (newName.trim() && !isNaN(qtyNum) && qtyNum >= (item.qty - item.available)) {
+    const diff = qtyNum - item.qty;
+    item.name = newName.trim();
+    item.qty = qtyNum;
+    item.available += diff;
+    save();
+  } else {
+    alert("ข้อมูลไม่ถูกต้อง หรือจำนวนทั้งหมดน้อยกว่าจำนวนที่กำลังถูกยืมอยู่");
+  }
+}
+
+function deleteEquipment(id) {
+  const item = data.equipment.find(x => x.id === id);
+  if (!item) return;
+  if (item.qty !== item.available) return alert("ไม่สามารถลบได้ เนื่องจากมีคนยืมอุปกรณ์นี้อยู่");
+  if (confirm(`ต้องการลบ "${item.name}" ใช่หรือไม่?`)) {
+    data.equipment = data.equipment.filter(x => x.id !== id);
+    save();
+  }
+}
+
+function addPerson() {
+  const name = document.getElementById('personName').value.trim();
+  if (!name) return alert('กรุณากรอกชื่อ');
+  data.people.push({ id: Date.now(), name });
+  document.getElementById('personName').value = '';
+  save();
+}
+
+function editPerson(id) {
+  const item = data.people.find(x => x.id === id);
+  if (!item) return;
+  const newName = prompt("แก้ไขชื่อบุคลากร:", item.name);
+  if (newName !== null && newName.trim() !== "") {
+    item.name = newName.trim();
+    save();
+  }
+}
+
+function deletePerson(id) {
+  const item = data.people.find(x => x.id === id);
+  if (!item) return;
+  if (confirm(`ต้องการลบ "${item.name}" ใช่หรือไม่?`)) {
+    data.people = data.people.filter(x => x.id !== id);
+    save();
+  }
+}
+
+function borrow() {
+  const eqId = document.getElementById('borrowEq').value;
+  const personId = document.getElementById('borrowPerson').value;
+  const returnDate = document.getElementById('borrowReturnDate').value;
+
+  const e = data.equipment.find(x => x.id == eqId);
+  const p = data.people.find(x => x.id == personId);
+  
+  if (!e || !p) return alert('กรุณาเลือกอุปกรณ์และผู้เบิก');
+  if (e.available < 1) return alert('อุปกรณ์ไม่พร้อมใช้งาน');
+  
+  e.available--;
+  const borrowRecord = {
+    id: Date.now(),
+    eqId: e.id,
+    personId: p.id,
+    equipmentName: e.name,
+    personName: p.name,
+    borrowDate: new Date().toLocaleString('th-TH'),
+    expectedReturn: returnDate || '-'
+  };
+  
+  if (!data.activeBorrows) data.activeBorrows = [];
+  data.activeBorrows.push(borrowRecord);
+  
+  data.history.unshift({
+    date: borrowRecord.borrowDate,
+    equipment: e.name,
+    person: p.name,
+    action: 'เบิกอุปกรณ์',
+    note: returnDate ? `กำหนดคืน: ${returnDate}` : '-'
+  });
+  
+  document.getElementById('borrowReturnDate').value = '';
+  save();
+  alert('บันทึกการเบิกเรียบร้อยแล้ว');
+}
+
+function returnEquipment(borrowId) {
+  const recordIndex = data.activeBorrows.findIndex(x => x.id === borrowId);
+  if (recordIndex === -1) return;
+  const record = data.activeBorrows[recordIndex];
+  
+  if (confirm(`ยืนยันการรับคืน "${record.equipmentName}" จากคุณ ${record.personName} ใช่หรือไม่?`)) {
+    const e = data.equipment.find(x => x.id === record.eqId);
+    if (e) e.available++;
+    
+    data.history.unshift({
+      date: new Date().toLocaleString('th-TH'),
+      equipment: record.equipmentName,
+      person: record.personName,
+      action: 'คืนอุปกรณ์',
+      note: 'รับคืนสำเร็จ'
+    });
+    
+    data.activeBorrows.splice(recordIndex, 1);
+    save();
+  }
+}
+
+function render() {
+  if (!data.activeBorrows) data.activeBorrows = [];
+  
+  const total = data.equipment.reduce((a, x) => a + x.qty, 0);
+  const available = data.equipment.reduce((a, x) => a + x.available, 0);
+  
+  document.getElementById('total').textContent = total;
+  document.getElementById('available').textContent = available;
+  document.getElementById('borrowed').textContent = total - available;
+
+  document.getElementById('equipmentList').innerHTML = data.equipment.length ?
+    '<table><tr><th>ชื่ออุปกรณ์</th><th>ทั้งหมด</th><th>พร้อมใช้</th><th style="text-align:right">จัดการ</th></tr>' +
+    data.equipment.map(x => `<tr>
+      <td>${esc(x.name)}</td>
+      <td>${x.qty}</td>
+      <td>${x.available}</td>
+      <td style="text-align:right">
+        <button class="btn-sm btn-edit" onclick="editEquipment(${x.id})">แก้ไข</button>
+        <button class="btn-sm btn-delete" onclick="deleteEquipment(${x.id})">ลบ</button>
+      </td>
+    </tr>`).join('') + '</table>' : '<p style="color:#666">ยังไม่มีข้อมูลอุปกรณ์</p>';
+
+  document.getElementById('peopleList').innerHTML = data.people.length ?
+    '<table><tr><th>ชื่อ-นามสกุล</th><th style="text-align:right">จัดการ</th></tr>' + 
+    data.people.map(x => `<tr>
+      <td>${esc(x.name)}</td>
+      <td style="text-align:right">
+        <button class="btn-sm btn-edit" onclick="editPerson(${x.id})">แก้ไข</button>
+        <button class="btn-sm btn-delete" onclick="deletePerson(${x.id})">ลบ</button>
+      </td>
+    </tr>`).join('') + '</table>' : '<p style="color:#666">ยังไม่มีข้อมูลบุคลากร (กรุณาเพิ่มชื่อบุคลากรก่อนทำการเบิก)</p>';
+
+  document.getElementById('borrowEq').innerHTML = '<option value="">-- เลือกอุปกรณ์ --</option>' + 
+    data.equipment.filter(x => x.available > 0).map(x => `<option value="${x.id}">${esc(x.name)} (${x.available} พร้อมใช้)</option>`).join('');
+  document.getElementById('borrowPerson').innerHTML = '<option value="">-- เลือกผู้เบิก --</option>' + 
+    data.people.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+
+  document.getElementById('borrowedList').innerHTML = data.activeBorrows.length ?
+    '<table><tr><th>อุปกรณ์</th><th>ผู้เบิก</th><th>วันที่ยืม</th><th>กำหนดคืน</th><th style="text-align:right">จัดการ</th></tr>' +
+    data.activeBorrows.map(x => `<tr>
+      <td>${esc(x.equipmentName)}</td>
+      <td>${esc(x.personName)}</td>
+      <td>${esc(x.borrowDate.split(' ')[0])}</td>
+      <td>${esc(x.expectedReturn)}</td>
+      <td style="text-align:right"><button class="btn-sm btn-return" onclick="returnEquipment(${x.id})">กดรับคืน</button></td>
+    </tr>`).join('') + '</table>' : '<p style="color:#666">ไม่มีอุปกรณ์ที่ถูกยืมในขณะนี้</p>';
+
+  document.getElementById('historyList').innerHTML = data.history.length ?
+    '<table><tr><th>วัน-เวลา</th><th>สถานะ</th><th>อุปกรณ์</th><th>ผู้ทำรายการ</th><th>หมายเหตุ</th></tr>' +
+    data.history.map(x => `<tr>
+      <td>${esc(x.date)}</td>
+      <td><span style="color:${x.action==='เบิกอุปกรณ์'?'#ef4444':'#10b981'}; font-weight:bold;">${x.action}</span></td>
+      <td>${esc(x.equipment)}</td>
+      <td>${esc(x.person)}</td>
+      <td>${esc(x.note || '-')}</td>
+    </tr>`).join('') + '</table>' : '<p style="color:#666">ยังไม่มีประวัติทำรายการ</p>';
+}
+
+function esc(s) { 
+  return String(s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m])); 
+}
+
+render();
+</script>
+</body>
+</html>
